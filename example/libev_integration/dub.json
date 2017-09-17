@@ -1,0 +1,16 @@
+{
+    "name": "serialport_libev_example",
+    "authors": [
+        "qbazd"
+    ],
+    "description": "SerialPort Libev example.",
+    "copyright": "Copyright © 2017, qbazd",
+    "license": "MIT",
+    "dependencies": {
+        "serialport": {
+            "path": "../../"
+        },        
+        "libev": "~>5.0.0+4.04"
+    }
+    
+}

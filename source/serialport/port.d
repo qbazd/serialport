@@ -140,6 +140,8 @@ public:
 
     @property
     {
+        version (Posix) int get_fd(){ return handle ;}
+
         ///
         bool closed() const
         {
@@ -471,8 +473,48 @@ public:
 
             sleep(pause);
         }
+
+
     }
 
+
+    /// read write non block
+    version (Posix)
+    {
+
+        ///
+        void [] read(void[] arr)
+        {
+            if (closed) throw new PortClosedException(port);
+
+            auto ptr = arr.ptr;
+            auto len = arr.length;
+
+            auto sres = posixRead(handle, ptr, len);
+
+            if (sres < 0 && errno == EAGAIN) // no bytes for read, it's ok
+                sres = 0;
+            else
+                enforce(sres > 0,
+                        new ReadException(port, text("errno ", errno)));
+
+            return arr[0..sres];
+        }
+
+        ///
+        void write(const(void[]) arr)
+        {
+            if (closed) throw new PortClosedException(port);
+
+            auto ptr = arr.ptr ;
+            auto len = arr.length ;
+            auto res = posixWrite(handle, ptr, len);
+            enforce(res >= 0, new WriteException(port, text("errno ", errno)));
+
+        }
+
+
+    }
 protected:
 
     version (Posix)
