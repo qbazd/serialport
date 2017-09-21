@@ -25,9 +25,9 @@ protected:
     string port;
 
     ///
-    version (Posix) int handle = -1;
+    version (Posix) int _handle = -1;
     ///
-    version (Windows) HANDLE handle = null;
+    version (Windows) HANDLE _handle = null;
 
     /// preform pause
     void sleep(Duration dt)
@@ -108,13 +108,13 @@ public:
         if (closed) return;
         version (Windows)
         {
-            CloseHandle(handle);
-            handle = null;
+            CloseHandle(_handle);
+            _handle = null;
         }
         version (Posix)
         {
-            posixClose(handle);
-            handle = -1;
+            posixClose(_handle);
+            _handle = -1;
         }
     }
 
@@ -138,16 +138,18 @@ public:
     ///
     SerialPort set(StopBits sb) { config = config.set(sb); return this; }
 
+
     @property
     {
-        version (Posix) int handle(){ return handle ;}
-        version (Windows) HANDLE handle(){ return handle ;}
+
+        version (Posix) int handle(){ return _handle ;}
+        version (Windows) HANDLE handle(){ return _handle ;}
 
         ///
         bool closed() const
         {
-            version (Posix) return handle == -1;
-            version (Windows) return handle is null;
+            version (Posix) return _handle == -1;
+            version (Windows) return _handle is null;
         }
 
         ///
@@ -160,7 +162,7 @@ public:
             version (Posix)
             {
                 termios opt;
-                enforce(tcgetattr(handle, &opt) != -1,
+                enforce(tcgetattr(_handle, &opt) != -1,
                         new SerialPortException(format("Failed while call tcgetattr: %d", errno)));
 
                 ret.baudRate = getUintBaudRate();
@@ -179,7 +181,7 @@ public:
             version (Windows)
             {
                 DCB cfg;
-                GetCommState(handle, &cfg);
+                GetCommState(_handle, &cfg);
 
                 ret.baudRate = cast(uint)cfg.BaudRate;
 
@@ -206,7 +208,7 @@ public:
                 setUintBaudRate(c.baudRate);
 
                 termios opt;
-                enforce(tcgetattr(handle, &opt) != -1,
+                enforce(tcgetattr(_handle, &opt) != -1,
                         new SerialPortException(format("Failed while call tcgetattr: %d", errno)));
 
                 final switch (c.parity)
@@ -247,7 +249,7 @@ public:
                         break;
                 }
 
-                enforce(tcsetattr(handle, TCSANOW, &opt) != -1,
+                enforce(tcsetattr(_handle, TCSANOW, &opt) != -1,
                         new SerialPortException(format("Failed while call tcsetattr: %d", errno)));
 
                 auto test = config;
@@ -264,12 +266,12 @@ public:
             version (Windows)
             {
                 DCB cfg;
-                GetCommState(handle, &cfg);
+                GetCommState(_handle, &cfg);
 
                 if (cfg.BaudRate != cast(DWORD)c.baudRate)
                 {
                     cfg.BaudRate = cast(DWORD)c.baudRate;
-                    enforce(SetCommState(handle, &cfg),
+                    enforce(SetCommState(_handle, &cfg),
                             new BaudRateUnsupportedException(c.baudRate));
                 }
 
@@ -278,7 +280,7 @@ public:
                 if (cfg.Parity != tmpParity)
                 {
                     cfg.Parity = cast(ubyte)tmpParity;
-                    enforce(SetCommState(handle, &cfg),
+                    enforce(SetCommState(_handle, &cfg),
                             new ParityUnsupportedException(c.parity));
                 }
 
@@ -289,14 +291,14 @@ public:
                 if (cfg.StopBits != tmpStopBits)
                 {
                     cfg.StopBits = cast(ubyte)tmpStopBits;
-                    enforce(SetCommState(handle, &cfg),
+                    enforce(SetCommState(_handle, &cfg),
                             new StopBitsUnsupportedException(c.stopBits));
                 }
 
                 if (cfg.ByteSize != cast(typeof(cfg.ByteSize))c.dataBits)
                 {
                     cfg.ByteSize = cast(typeof(cfg.ByteSize))c.dataBits;
-                    enforce(SetCommState(handle, &cfg),
+                    enforce(SetCommState(_handle, &cfg),
                             new DataBitsUnsupportedException(c.dataBits));
                 }
             }
@@ -385,13 +387,13 @@ public:
 
             version (Posix)
             {
-                res = posixWrite(handle, ptr, len);
+                res = posixWrite(_handle, ptr, len);
                 enforce(res >= 0, new WriteException(port, text("errno ", errno)));
             }
             version (Windows)
             {
                 uint sres;
-                auto wfr = WriteFile(handle, ptr, cast(uint)len, &sres, null);
+                auto wfr = WriteFile(_handle, ptr, cast(uint)len, &sres, null);
                 if (!wfr)
                 {
                     auto err = GetLastError();
@@ -436,7 +438,7 @@ public:
 
             version (Posix)
             {
-                auto sres = posixRead(handle, ptr, len);
+                auto sres = posixRead(_handle, ptr, len);
 
                 if (sres < 0 && errno == EAGAIN) // no bytes for read, it's ok
                     sres = 0;
@@ -448,7 +450,7 @@ public:
             version (Windows)
             {
                 uint sres;
-                auto rfr = ReadFile(handle, ptr, cast(uint)len, &sres, null);
+                auto rfr = ReadFile(_handle, ptr, cast(uint)len, &sres, null);
                 if (!rfr)
                 {
                     auto err = GetLastError();
@@ -495,7 +497,7 @@ public:
             auto ptr = arr.ptr;
             auto len = arr.length;
 
-            auto sres = posixRead(handle, ptr, len);
+            auto sres = posixRead(_handle, ptr, len);
 
             if (sres < 0 && errno == EAGAIN) // no bytes for read, it's ok
                 sres = 0;
@@ -513,7 +515,7 @@ public:
 
             auto ptr = arr.ptr ;
             auto len = arr.length ;
-            auto res = posixWrite(handle, ptr, len);
+            auto res = posixWrite(_handle, ptr, len);
             enforce(res >= 0, new WriteException(port, text("errno ", errno)));
 
         }
@@ -534,13 +536,13 @@ protected:
                 enum BOTHER = octal!10000;
 
                 termios2 opt2;
-                enforce(ioctl(handle, TCGETS2, &opt2) != -1,
+                enforce(ioctl(_handle, TCGETS2, &opt2) != -1,
                         new SetupFailException(port, "can't get termios2 options"));
                 opt2.c_cflag &= ~CBAUD; //Remove current BAUD rate
                 opt2.c_cflag |= BOTHER; //Allow custom BAUD rate using int input
                 opt2.c_ispeed = br;     //Set the input BAUD rate
                 opt2.c_ospeed = br;     //Set the output BAUD rate
-                ioctl(handle, TCSETS2, &opt2);
+                ioctl(_handle, TCSETS2, &opt2);
             }
             else
             {
@@ -550,13 +552,13 @@ protected:
                 auto baud = unixBaudList[br];
 
                 termios opt;
-                enforce(tcgetattr(handle, &opt) != -1,
+                enforce(tcgetattr(_handle, &opt) != -1,
                     new SerialPortException(port, "can't get termios options"));
 
                 //cfsetispeed(&opt, B0);
                 cfsetospeed(&opt, baud);
 
-                enforce(tcsetattr(handle, TCSANOW, &opt) != -1,
+                enforce(tcsetattr(_handle, TCSANOW, &opt) != -1,
                         new SerialPortException("Failed while call tcsetattr"));
             }
         }
@@ -566,14 +568,14 @@ protected:
             version (usetermios2)
             {
                 termios2 opt2;
-                enforce(ioctl(handle, TCGETS2, &opt2) != -1,
+                enforce(ioctl(_handle, TCGETS2, &opt2) != -1,
                         new SetupFailException(port, "can't get termios2 options"));
                 return opt2.c_ospeed;
             }
             else
             {
                 termios opt;
-                enforce(tcgetattr(handle, &opt) != -1,
+                enforce(tcgetattr(_handle, &opt) != -1,
                     new SerialPortException(port, "can't get termios options"));
                 auto b = cfgetospeed(&opt);
                 if (b !in unixUintBaudList)
@@ -593,13 +595,13 @@ protected:
 
         version (Posix)
         {
-            handle = open(port.toStringz(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-            enforce(handle != -1,
+            _handle = open(port.toStringz(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+            enforce(_handle != -1,
                     new SetupFailException(port,
                         format("Can't open port (errno %d)", errno)));
 
             termios opt;
-            enforce(tcgetattr(handle, &opt) != -1,
+            enforce(tcgetattr(_handle, &opt) != -1,
                 new SetupFailException(port, "can't get termios options"));
 
             // make raw
@@ -612,26 +614,26 @@ protected:
                 opt.c_cflag &= ~CRTSCTS;
             opt.c_cflag |= CS8;
 
-            enforce(tcsetattr(handle, TCSANOW, &opt) != -1,
+            enforce(tcsetattr(_handle, TCSANOW, &opt) != -1,
                     new SetupFailException(format("Failed while" ~
                             " call tcsetattr (errno %d)", errno)));
         }
         else version (Windows)
         {
             auto fname = `\\.\` ~ port;
-            handle = CreateFileA(fname.toStringz,
+            _handle = CreateFileA(fname.toStringz,
                         GENERIC_READ | GENERIC_WRITE, 0, null,
                         OPEN_EXISTING, 0, null);
 
-            if (handle is INVALID_HANDLE_VALUE)
+            if (_handle is INVALID_HANDLE_VALUE)
             {
                 auto err = GetLastError();
                 throw new SetupFailException(port,
                         format("can't CreateFileA '%s' with error: %d", fname, err));
             }
 
-            SetupComm(handle, 4096, 4096);
-            PurgeComm(handle, PURGE_TXABORT | PURGE_TXCLEAR |
+            SetupComm(_handle, 4096, 4096);
+            PurgeComm(_handle, PURGE_TXABORT | PURGE_TXCLEAR |
                               PURGE_RXABORT | PURGE_RXCLEAR);
 
             COMMTIMEOUTS tm;
@@ -641,7 +643,7 @@ protected:
             tm.WriteTotalTimeoutMultiplier = 0;
             tm.WriteTotalTimeoutConstant   = 0;
 
-            if (SetCommTimeouts(handle, &tm) == 0)
+            if (SetCommTimeouts(_handle, &tm) == 0)
                 throw new SetupFailException(port,
                         format("can't SetCommTimeouts with error: %d", GetLastError()));
         }
