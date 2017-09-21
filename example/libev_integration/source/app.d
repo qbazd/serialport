@@ -35,7 +35,7 @@ class SerialEV {
     catch (SerialPortException e)
       return;
 
-    _eio = new EventIO(_loop, _serial.get_fd, &this.onRead, null);
+    _eio = new EventIO(_loop, _serial.handle, &this.onRead, null);
     _eio.start();
     writeln(_name, " openned");
   }

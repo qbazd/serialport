@@ -140,7 +140,8 @@ public:
 
     @property
     {
-        version (Posix) int get_fd(){ return handle ;}
+        version (Posix) int handle(){ return handle ;}
+        version (Windows) HANDLE handle(){ return handle ;}
 
         ///
         bool closed() const
@@ -362,6 +363,7 @@ public:
         }
     }
 
+
     ///
     void write(const(void[]) arr, Duration timeout=500.usecs)
     {
@@ -406,6 +408,8 @@ public:
             sleep(pause);
         }
     }
+
+
 
     ///
     void[] read(void[] arr, Duration timeout=1.seconds,
@@ -515,6 +519,8 @@ public:
 
 
     }
+
+
 protected:
 
     version (Posix)
