@@ -331,6 +331,7 @@ public:
                     { return a <= v && v <= b; }
 
                     version (linux)   return n.startsWith("ttyUSB") ||
+                                             n.startsWith("ttyACM") ||
                                              n.startsWith("ttyS");
                     version (darwin)  return n.startsWith("cu");
                     version (FreeBSD) return n.startsWith("cuaa") ||
